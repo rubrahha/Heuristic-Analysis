@@ -1,0 +1,63 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+
+# =========================
+# Logs
+# =========================
+*.log
+ai/logs/
+
+# =========================
+# Build (Python + generic)
+# =========================
+build/
+dist/
+
+# =========================
+# C++ / CMake / Ninja (CRITICAL)
+# =========================
+scanner/build/
+scanner/cmake_build/
+scanner/out/
+
+*.obj
+*.pdb
+*.exe
+*.dll
+*.bin
+
+.ninja_log
+.ninja_deps
+
+ai/models/ember_lightgbm.txt
+ai/models/*.txt
+# =========================
+# Models / ML artifacts
+# =========================
+ai/models/
+*.pkl
+*.dat
+*.txt
+
+# =========================
+# Dataset
+# =========================
+ai/dataset/
+
+# =========================
+# IDE
+# =========================
+.vs/
+.vscode/
+
+# =========================
+# Misc
+# =========================
+*.tmp

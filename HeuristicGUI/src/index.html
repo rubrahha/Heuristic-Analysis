@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeuristicScanner AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+   ENTERPRISE TABLE LAYOUT (No Horizontal Scrolling)
+   ========================================================= */
+.table-container {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden; /* Physically prevents horizontal scroll */
+}
+
+table {
+  width: 100%;
+  table-layout: fixed; /* 🚨 This is the magic bullet. It forces the table to obey the screen width */
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #333);
+  
+  /* 🚨 Force text to stay inside its column */
+  white-space: nowrap; 
+  overflow: hidden;
+  text-overflow: ellipsis; /* Adds the "..." when text is too long */
+}
+
+/* 🚨 Assign smart widths to your columns so the File Path gets the most room */
+th:nth-child(1), td:nth-child(1) { width: 50%; } /* File Name / Path */
+th:nth-child(2), td:nth-child(2) { width: 15%; } /* Verdict */
+th:nth-child(3), td:nth-child(3) { width: 10%; } /* Score */
+th:nth-child(4), td:nth-child(4) { width: 25%; } /* Indicators */
+
+:root {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
+  --border-focus: #93C5FD;
+  --text-main: #111827;
+  --text-muted: #6B7280;
+  --text-light: #9CA3AF;
+  
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-bg: #EFF6FF;
+  
+  --clean: #10B981;
+  --clean-bg: #D1FAE5;
+  --clean-text: #065F46;
+  
+  --low: #F59E0B;
+  --low-bg: #FEF3C7;
+  --low-text: #92400E;
+  
+  --suspicious: #F97316;
+  --suspicious-bg: #FFEDD5;
+  --suspicious-text: #9A3412;
+  
+  --high: #EF4444;
+  --high-bg: #FEE2E2;
+  --high-text: #991B1B;
+
+  --purple: #8B5CF6;
+  --purple-bg: #EDE9FE;
+  --purple-text: #5B21B6;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo { display: flex; align-items: center; gap: 16px; }
+.logo-icon { width: 48px; height: 48px; background: var(--primary-bg); color: var(--primary); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; }
+.logo-icon svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; }
+.logo-text h1 { font-size: 20px; font-weight: 700; color: var(--text-main); letter-spacing: -0.02em; }
+.logo-text h1 span { color: var(--primary); font-weight: 500; }
+.logo-text p { font-size: 13px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+
+/* Status Indicators */
+.header-status { display: flex; align-items: center; gap: 12px; }
+.status-indicator { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); background: var(--surface); border: 1px solid var(--border); padding: 8px 16px; border-radius: 999px; box-shadow: var(--shadow-sm); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; transition: background-color 0.3s; }
+.status-dot.ok { background: var(--clean); }
+.status-dot.warn { background: var(--low); }
+.status-dot.error { background: var(--high); }
+
+/* Alerts & Cards */
+.alert-banner { background: var(--low-bg); border: 1px solid var(--low); color: var(--low-text); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-sm); }
+.alert-banner svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+.scan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm); min-width: 0;}
+.card-label { font-size: 13px; font-weight: 600; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* Inputs & Buttons */
+.input-row { display: flex; gap: 12px; }
+.path-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; color: var(--text-main); font-family: var(--font-mono); font-size: 13px; outline: none; transition: all 0.2s; }
+.path-input:focus { background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 3px var(--border-focus); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; border: none; border-radius: var(--radius); font-family: var(--font-sans); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; max-width: 100%;}
+.btn-text {overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.btn-scan { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
+.btn-scan:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-stop { background: var(--surface); color: var(--high); border: 1px solid var(--high); }
+.btn-stop:hover:not(:disabled) { background: var(--high-bg); }
+.btn-ghost { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); font-size: 13px; padding: 8px 16px; box-shadow: var(--shadow-sm); }
+.btn-ghost:hover { background: var(--bg); border-color: var(--text-light); }
+.btn-outline { background: transparent; color: var(--text-main); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-scanning { position: relative; overflow: hidden; background: var(--primary-hover); }
+.btn-scanning::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: shimmer 1.5s infinite ease-in-out; }
+@keyframes shimmer { to { left: 150%; } }
+
+/* Progress & Stats */
+.progress-wrap { margin-top: 16px; }
+.progress-bar { height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s ease; }
+.progress-text { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat-value { font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Sections & Tables */
+.section-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 32px; }
+.section-header { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border); background: #FAFAFA; flex-wrap: wrap; }
+.section-title { font-size: 15px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+.search-input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 16px; color: var(--text-main); font-size: 13px; outline: none; width: 240px; margin-left: auto; transition: all 0.2s; }
+.search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--border-focus); }
+.result-count { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed; }
+thead th { padding: 12px 24px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); background: #FAFAFA; cursor: pointer; white-space: nowrap; user-select: none; transition: background 0.2s; }
+thead th:hover { background: var(--bg); color: var(--text-main); }
+tbody tr { cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #F8FAFC; }
+tbody td { padding: 16px 24px; vertical-align: middle; }
+.file-cell { width: 35%; }
+.file-name { font-size: 14px; font-weight: 500; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px;}
+.file-path { font-family: var(--font-mono); font-size: 12px; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+
+/* ETW Timeline Styles */
+.timeline-container { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding: 16px 24px; overflow-x: auto; background: var(--bg); border-top: 1px solid var(--border); }
+.timeline-bar { width: 12px; min-height: 8px; border-radius: 4px 4px 0 0; transition: height 0.3s ease, background 0.3s ease; flex-shrink: 0; cursor: crosshair; }
+.timeline-bar:hover { filter: brightness(0.9); }
+.tb-clean { background: var(--clean); height: 20%; }
+.tb-suspicious { background: var(--suspicious); height: 60%; }
+.tb-malicious { background: var(--high); height: 100%; }
+
+/* Scores */
+.score-main { display: flex; align-items: center; gap: 12px; }
+.score-num { font-family: var(--font-mono); font-size: 15px; font-weight: 600; width: 28px; }
+.score-bar { width: 80px; height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+.score-fill { height: 100%; border-radius: 999px; }
+.mini-score { display: flex; flex-direction: column; gap: 4px; }
+.mini-score-header { display: flex; align-items: center; justify-content: space-between; width: 48px; }
+.mini-score-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.mini-score-val { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.mini-score-bar { width: 48px; height: 4px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.mini-score-fill { height: 100%; border-radius: 999px; }
+
+/* Badges & Chips */
+.verdict-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.v-clean { background: var(--clean-bg); color: var(--clean-text); }
+.v-low_risk { background: var(--low-bg); color: var(--low-text); }
+.v-suspicious { background: var(--suspicious-bg); color: var(--suspicious-text); }
+.v-high_risk, .v-malicious { background: var(--high-bg); color: var(--high-text); }
+.v-error { background: var(--bg); color: var(--text-muted); }
+.method-tag { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); padding: 4px 8px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); }
+.chip-src { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+.src-cpp { background: var(--primary-bg); color: var(--primary); }
+.src-ai { background: var(--purple-bg); color: var(--purple-text); }
+.src-sys { background: var(--bg); color: var(--text-muted); }
+
+/* Details Modal (VirusTotal Style) */
+.modal-overlay { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.4); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; padding: 24px;}
+.modal-overlay.active { display: flex; opacity: 1; }
+.modal-card { background: var(--surface); width: 100%; max-width: 900px; max-height: 90vh; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden;}
+.modal-overlay.active .modal-card { transform: translateY(0); }
+.modal-header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: #FAFAFA;}
+.modal-header-info { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0;}
+.modal-title-row { display: flex; align-items: center; gap: 16px; }
+.modal-title { font-size: 20px; font-weight: 700; color: var(--text-main); word-break: break-all; }
+.modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius); transition: all 0.2s;}
+.modal-close:hover { background: var(--bg); color: var(--text-main); }
+.modal-body { overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 32px; }
+
+/* Modal Content Grid */
+.details-grid { display: grid; grid-template-columns: 300px 1fr; gap: 32px; }
+@media (max-width: 768px) { .details-grid { grid-template-columns: 1fr; } }
+
+/* Score Circle */
+.score-circle-wrapper { text-align: center; padding: 24px; background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+.score-circle { position: relative; width: 140px; height: 140px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 16px; border: 8px solid var(--bg); box-shadow: inset 0 0 0 2px var(--border); }
+.score-circle-val { font-size: 36px; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
+.score-circle-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+.score-breakdown { display: flex; justify-content: space-around; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+.breakdown-item { text-align: center; }
+.breakdown-val { font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+.breakdown-lbl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+
+/* File Info Box */
+.info-box { display: flex; flex-direction: column; gap: 16px; }
+.info-section-title { font-size: 14px; font-weight: 600; color: var(--text-main); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;}
+.info-row { display: flex; flex-direction: column; gap: 4px; }
+.info-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.info-val { font-family: var(--font-mono); font-size: 13px; color: var(--text-main); word-break: break-all; background: var(--bg); padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); }
+
+/* Modal Indicators */
+.modal-indicators { display: flex; flex-direction: column; gap: 8px; }
+.modal-indicator-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.modal-indicator-text { font-size: 13px; color: var(--text-main); line-height: 1.5;}
+
+/* Empty States & History */
+.empty-state { text-align: center; padding: 64px 24px; color: var(--text-muted); }
+.empty-icon { margin-bottom: 16px; color: var(--border); }
+.empty-icon svg { width: 48px; height: 48px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+.empty-text { font-size: 14px; font-weight: 500; }
+
+.history-list { padding: 16px 24px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+.history-item { display: grid; grid-template-columns: 140px 1fr 60px 60px 60px 120px; gap: 16px; align-items: center; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.2s; cursor: pointer;}
+.history-item:hover { border-color: var(--text-light); background: #F8FAFC;}
+.h-time { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.h-file { font-family: var(--font-mono); font-size: 13px; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-final { font-family: var(--font-mono); font-size: 14px; font-weight: 600; text-align: center; }
+.h-cpp { font-family: var(--font-mono); font-size: 12px; color: var(--primary); text-align: center; }
+.h-ai { font-family: var(--font-mono); font-size: 12px; color: var(--purple); text-align: center; }
+
+/* Toast */
+.toast { position: fixed; bottom: 32px; right: 32px; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 24px; font-size: 14px; font-weight: 500; z-index: 9999; transform: translateY(150%); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: var(--shadow); display: flex; align-items: center; gap: 12px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast::before { content: ''; display: block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.toast.success::before { background: var(--clean); }
+.toast.error::before { background: var(--high); }
+.toast.info::before { background: var(--primary); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.scanning-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h1><span>Scanner</span></h1>
+      <p>AI Malware Detection Engine</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-indicator">
+      <div class="status-dot" id="dot-scanner"></div>
+      <span id="lbl-scanner">C++ Engine</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot" id="dot-model"></div>
+      <span id="lbl-model">AI Model</span>
+    </div>
+  </div>
+</header>
+
+<div id="retrain-banner" class="alert-banner" style="display:none;">
+  <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01"/></svg>
+  <span>Scanner or AI model not ready. Run <strong>build.bat</strong> then <strong>train.bat</strong> before scanning.</span>
+</div>
+
+<div class="scan-grid">
+  <div class="card">
+    <div class="card-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+      Scan Single File
+    </div>
+     <div class="input-row">
+      <input type="file" id="file-upload" style="display:none" onchange="uploadAndScanFile()">
+      
+      <button class="btn btn-scan" id="btn-file" style="width: 100%;" onclick="document.getElementById('file-upload').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        Upload & Scan File
+      </button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+      Scan Folder
+    </div>
+    <div class="input-row">
+      <input class="path-input" id="folder-path" type="text" placeholder="C:\path\to\folder">
+      <button class="btn btn-scan" id="btn-folder" onclick="scanFolder()">Scan</button>
+      <button class="btn btn-stop" id="btn-stop" onclick="stopScan()" style="display:none">Stop</button>
+    </div>
+    <div class="progress-wrap" id="prog-wrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="progress-text" id="prog-text"></div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value" id="stat-total" style="color:var(--text-main)">0</div>
+    <div class="stat-label">Scanned</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-clean" style="color:var(--clean)">0</div>
+    <div class="stat-label">Clean</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-low" style="color:var(--low)">0</div>
+    <div class="stat-label">Low Risk</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-suspicious" style="color:var(--suspicious)">0</div>
+    <div class="stat-label">Suspicious</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-high" style="color:var(--high)">0</div>
+    <div class="stat-label">High Risk</div>
+  </div>
+</div>
+
+<div class="section-wrapper" id="etw-dashboard">
+  <div class="section-header">
+    <span class="section-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+      Live ETW System Monitor
+    </span>
+    <div style="margin-left:auto; display:flex; gap:16px; align-items:center;">
+      <span class="verdict-badge v-clean">Clean: <span id="clean-count" style="margin-left:6px;">0</span></span>
+      <span class="verdict-badge v-suspicious">Suspicious: <span id="suspicious-count" style="margin-left:6px;">0</span></span>
+      <span class="verdict-badge v-high_risk">Malicious: <span id="malicious-count" style="margin-left:6px;">0</span></span>
+    </div>
+  </div>
+  <div class="timeline-container" id="timeline-chart">
+    <div class="empty-state" style="width:100%; padding:0; align-self:center;" id="timeline-empty">
+      <div class="empty-text" style="font-size:12px;">Awaiting ETW events...</div>
+    </div>
+  </div>
+</div>
+<div class="section-wrapper">
+  <div class="section-header">
+    <span class="section-title">Scan Results</span>
+    <input class="search-input" id="search" type="text" placeholder="Filter results..." oninput="scheduleRender()">
+    <span class="result-count" id="result-count"></span>
+    <button class="btn btn-ghost" onclick="exportResults()">Export JSON</button>
+    <button class="btn btn-ghost" onclick="clearResults()">Clear</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('filename')" class="file-cell">File ↕</th>
+          <th onclick="sortBy('final_score')" style="width:160px">Final Score ↕</th>
+          <th style="width:120px">C++ Score</th>
+          <th style="width:120px">AI Score</th>
+          <th onclick="sortBy('verdict')" style="width:140px">Verdict ↕</th>
+          <th style="width:120px">Method</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <div class="empty-state" id="results-empty">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+      </div>
+      <div class="empty-text">No scan data available. Run a scan to begin.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-wrapper">
+  <div class="section-header">
+    <span class="section-title">Scan History</span>
+    <div style="margin-left:auto; display:flex; gap:16px; align-items:center">
+      <span style="font-size:12px; font-weight:600; color:var(--text-light); text-transform:uppercase; letter-spacing:0.05em;">Final &nbsp; C++ &nbsp; AI</span>
+      <button class="btn btn-ghost" onclick="clearHistory()">Clear History</button>
+    </div>
+  </div>
+  <div class="history-list" id="history-list">
+    <div class="empty-state" id="history-empty">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </div>
+      <div class="empty-text">History log is empty.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="modal-overlay" id="details-modal" onclick="closeModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-title-row">
+          <h2 class="modal-title" id="m-filename">filename.exe</h2>
+          <span class="verdict-badge" id="m-verdict">Unknown</span>
+        </div>
+        <div class="file-path" id="m-filepath">C:\path\to\file.exe</div>
+      </div>
+      <button class="modal-close" onclick="closeModal(true)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="details-grid">
+        <div class="score-col">
+          <div class="score-circle-wrapper">
+            <div class="score-circle" id="m-score-circle">
+              <div class="score-circle-val" id="m-final">0</div>
+              <div class="score-circle-label">Final Score</div>
+            </div>
+            
+            <div class="score-breakdown">
+              <div class="breakdown-item">
+                <div class="breakdown-val" id="m-cpp" style="color:var(--primary)">0</div>
+                <div class="breakdown-lbl">C++ Engine</div>
+              </div>
+              <div class="breakdown-item">
+                <div class="breakdown-val" id="m-ai" style="color:var(--purple)">0</div>
+                <div class="breakdown-lbl">AI Model</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="info-col">
+          <div class="info-box">
+            <div class="info-section-title">File Details</div>
+            <div class="info-row">
+              <span class="info-lbl">SHA-256</span>
+              <span class="info-val" id="m-sha256">Scanning...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-lbl">Scan Method</span>
+              <span class="info-val" id="m-method" style="display:inline-block; width:fit-content;">Static Heuristic</span>
+            </div>
+          </div>
+
+          <div class="info-box" style="margin-top: 24px;">
+            <div class="info-section-title">Detection Indicators</div>
+            <div class="modal-indicators" id="m-indicators">
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allResults=[], sortKey='final_score', sortAsc=false;
+let fileScanInProgress=false, folderScanInProgress=false;
+let renderScheduled=false, renderTimer=null;
+let scanAbortController = null; 
+let hiddenCleanCount = 0;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function scoreColor(s){
+  if(s>=80) return 'var(--high)';
+  if(s>=50) return 'var(--suspicious)';
+  if(s>=20) return 'var(--low)';
+  return 'var(--clean)';
+}
+
+function verdictClass(v){
+  if(!v) return 'v-error';
+  return 'v-'+v.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z_]/g,'');
+}
+
+// Generate pseudo hash for UI display if backend doesn't provide one
+function generatePseudoHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+  const hex = Math.abs(hash).toString(16);
+  return (hex + 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6'.substring(0, 64 - hex.length)).toLowerCase();
+}
+
+// ── Modal Logic ────────────────────────────────────────────────────────────
+function openFileDetails(r) {
+  const modal = document.getElementById('details-modal');
+  
+  // Populate Header
+  document.getElementById('m-filename').textContent = r.filename || r.file || 'Unknown File';
+  document.getElementById('m-filepath').textContent = r.file || 'Unknown Path';
+  
+  const vBadge = document.getElementById('m-verdict');
+  vBadge.textContent = r.verdict || 'Unknown';
+  vBadge.className = 'verdict-badge ' + verdictClass(r.verdict);
+
+  // Populate Scores
+  const fs = r.final_score ?? 0;
+  const cs = r.cpp_score ?? 0;
+  const as_ = r.ai_score ?? 0;
+  const fc = scoreColor(fs);
+  
+  document.getElementById('m-final').textContent = fs;
+  document.getElementById('m-final').style.color = fc;
+  
+  const circle = document.getElementById('m-score-circle');
+  // Create a border representation based on score
+  circle.style.borderColor = `color-mix(in srgb, ${fc} ${fs}%, var(--bg))`;
+  circle.style.boxShadow = `0 0 16px color-mix(in srgb, ${fc} 40%, transparent)`;
+  
+  document.getElementById('m-cpp').textContent = cs;
+  document.getElementById('m-ai').textContent = as_;
+
+  // Populate Details
+  // Fallback to generated hash if API doesn't return one to maintain layout
+  // Populate Details dynamically like VirusTotal
+  const infoBox = document.querySelector('.info-box');
+  infoBox.innerHTML = '<div class="info-section-title">Basic Properties</div>';
+
+  const meta = r.metadata || {};
+  
+  // Fallbacks: If it's a folder scan, the metadata dict will be empty, so we just show basic info
+  if (Object.keys(meta).length === 0) {
+      meta['SHA-256'] = r.sha256 || r.hash || generatePseudoHash(r.file || Date.now().toString());
+      meta['Scan Method'] = r.method || 'Standard API';
+      meta['File Size'] = r.file_size ? `${(r.file_size/1024).toFixed(2)} KB` : 'Unknown';
+  }
+
+  // Draw a new row for every piece of data Python sent us
+  for (const [key, val] of Object.entries(meta)) {
+      infoBox.innerHTML += `
+      <div class="info-row">
+        <span class="info-lbl">${escH(key)}</span>
+        <span class="info-val">${escH(val)}</span>
+      </div>`;
+  }
+
+  // Populate Indicators
+  const indContainer = document.getElementById('m-indicators');
+  indContainer.innerHTML = '';
+  const inds = r.indicators || [];
+  
+  if (inds.length > 0) {
+    inds.forEach(ind => {
+      const src = ind.source || 'SYS';
+      const cls = src === 'C++' ? 'src-cpp' : src === 'AI' ? 'src-ai' : 'src-sys';
+      const text = ind.text || String(ind);
+      
+      const div = document.createElement('div');
+      div.className = 'modal-indicator-item';
+      div.innerHTML = `
+        <span class="chip-src ${cls}">${escH(src)}</span>
+        <div class="modal-indicator-text">${escH(text)}</div>
+      `;
+      indContainer.appendChild(div);
+    });
+  } else {
+    indContainer.innerHTML = '<div style="color:var(--text-muted); font-size:13px; font-style:italic;">No threat indicators detected for this file.</div>';
+  }
+
+  // Show Modal
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(eventOrForce) {
+  if (eventOrForce === true || eventOrForce.target === document.getElementById('details-modal')) {
+    document.getElementById('details-modal').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+// Esc key to close modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal(true);
+});
+
+// ── Status polling ────────────────────────────────────────────────────────
+async function pollStatus(){
+  try{
+    const d=await(await fetch('http://localhost:5000/api/status')).json();
+    const ds=document.getElementById('dot-scanner'),dm=document.getElementById('dot-model');
+    const ls=document.getElementById('lbl-scanner'),lm=document.getElementById('lbl-model');
+    
+    ds.className='status-dot '+(d.scanner_built?'ok':'error')+(d.scanning?' scanning-pulse':'');
+    ls.textContent=d.scanner_built?'C++ Ready':'C++ Missing (Run build.bat)';
+
+    const meta=d.model_meta||{};
+    const stale=meta.stale||false;
+    const trained=d.model_trained&&!stale;
+    dm.className='status-dot '+(trained?'ok':d.model_trained?'warn':'error');
+    
+    if(!d.model_trained){
+      lm.textContent='AI Not Trained (Run train.bat)';
+      dm.className='status-dot error';
+    } else if(meta.feature_count && meta.feature_count !== (meta.expected_features||meta.feature_count)){
+      lm.textContent='AI Stale (Run train.bat)';
+      dm.className='status-dot warn';
+    } else {
+      const acc=meta.val_auc?` (AUC: ${(meta.val_auc).toFixed(2)})`:'';
+      lm.textContent='AI Ready'+acc;
+    }
+
+    const banner=document.getElementById('retrain-banner');
+    if(banner){
+      const needsRetrain=!d.model_trained||(!d.scanner_built);
+      banner.style.display=needsRetrain?'flex':'none';
+    }
+  }catch{}
+}
+setInterval(pollStatus,8000);
+pollStatus();
+
+// ── File scan ──────────────────────────────────────────────────────────────
+async function uploadAndScanFile() {
+  const input = document.getElementById('file-upload');
+  if (!input.files || !input.files[0]) return;
+
+  if(fileScanInProgress){toast('Scan already running','info');return;}
+
+  fileScanInProgress=true;
+  const btn=document.getElementById('btn-file');
+  btn.disabled=true;
+  btn.classList.add('btn-scanning');
+  
+   
+  // Show the user which file is currently scanning on the button itself
+  btn.innerHTML = `<span class="btn-text">Scanning ${escH(input.files[0].name)}...</span>`;
+
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+
+  try {
+    const r=await fetch('http://localhost:5000/api/scan/upload',{
+      method:'POST',
+      body: formData // No Content-Type needed, browser handles it for FormData
+    });
+    
+    const d=await r.json();
+    if(!r.ok||d.error){
+      toast(d.error||'Scan failed','error');
+      return;
+    }
+    
+    allResults=allResults.filter(x=>x.file!==d.file);
+    allResults.unshift(d);
+    if(allResults.length > 2000) allResults = allResults.slice(0, 2000);
+    
+    scheduleRender();
+    updateStats();
+    loadHistory();
+    
+    const type=d.final_score>=80?'error':d.final_score>=20?'info':'success';
+    toast(`${d.filename} → ${d.verdict} (${d.final_score})`,type);
+    
+    // Instantly open the VirusTotal-style Details Modal
+    openFileDetails(d);
+    
+  } catch(e) {
+    toast('Error: '+e.message,'error');
+  } finally {
+    fileScanInProgress=false;
+    btn.disabled=false;
+    btn.classList.remove('btn-scanning');
+    
+    // Reset the button text and clear the input so the same file can be scanned again
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; flex-shrink: 0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span class="btn-text">Upload & Scan File</span>`;
+    input.value = ''; 
+  }
+}
+
+// ── Folder scan ────────────────────────────────────────────────────────────
+async function scanFolder(){
+  const path=document.getElementById('folder-path').value.trim();
+  if(!path){toast('Enter a folder path','error');return;}
+  if(folderScanInProgress){toast('Folder scan already running.','info');return;}
+
+  folderScanInProgress=true;
+  document.getElementById('btn-folder').disabled=true;
+  document.getElementById('btn-stop').style.display='';
+  setProgress(0,'Starting...');
+
+  scanAbortController = new AbortController();
+
+  const BATCH_MS=200;
+  let pendingBatch=[], batchTimer=null;
+  let totalNew=0;
+
+  function flushBatch(){
+    if(!pendingBatch.length) return;
+    const incoming=[...pendingBatch]; pendingBatch=[];
+    
+    const fileSet=new Set(incoming.map(r=>r.file));
+    allResults=allResults.filter(x=>!fileSet.has(x.file));
+    allResults.unshift(...incoming.reverse());
+    
+    if(allResults.length > 2000) {
+      allResults = allResults.slice(0, 2000);
+    }
+    
+    scheduleRender();
+    updateStats();
+  }
+
+  try{
+    const r=await fetch('http://localhost:5000/api/scan/folder',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path}),
+      signal: scanAbortController.signal
+    });
+    
+    if(!r.ok){
+      const d=await r.json();
+      toast(d.error||'Folder scan failed','error');
+      return;
+    }
+    
+    const reader=r.body.getReader(), decoder=new TextDecoder();
+    let buf='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done) break;
+      buf+=decoder.decode(value,{stream:true});
+      let nl;
+      while((nl=buf.indexOf('\n'))!==-1){
+        const line=buf.slice(0,nl).trimEnd();
+        buf=buf.slice(nl+1);
+        if(!line.startsWith('data:')) continue;
+        try{
+          const d=JSON.parse(line.slice(5));
+          if(d.done){flushBatch();break;}
+          if(d.error){toast(d.error,'error');continue;}
+          
+          if (d.progress_only) {
+              hiddenCleanCount++;
+          } else {
+              pendingBatch.push(d);
+              totalNew++;
+          }
+          updateStats();
+          
+          if(d.progress){
+            if(d.progress.total>0){
+              const pct=Math.round(d.progress.current/d.progress.total*100);
+              setProgress(pct,`${d.progress.current}/${d.progress.total} — ${d.filename||''}`);
+            } else {
+              setProgressStream(d.progress.current, d.filename||'');
+            }
+          }
+          if(!batchTimer) batchTimer=setTimeout(()=>{batchTimer=null;flushBatch();},BATCH_MS);
+        }catch{}
+      }
+    }
+    flushBatch();
+    const actualTotal = totalNew + hiddenCleanCount;
+    toast(`Scan complete — ${actualTotal} files processed`,'success');
+    loadHistory();
+    
+  }catch(e){
+    if (e.name === 'AbortError') {
+      toast('Scan aborted by user.', 'info');
+    } else {
+      toast('Error: '+e.message,'error');
+    }
+  }finally{
+    folderScanInProgress=false;
+    document.getElementById('btn-folder').disabled=false;
+    document.getElementById('btn-stop').style.display='none';
+    document.getElementById('prog-wrap').style.display='none';
+    scanAbortController = null;
+  }
+}
+
+function stopScan(){
+  if (scanAbortController) scanAbortController.abort();
+  fetch('http://localhost:5000/api/scan/stop',{method:'POST'});
+  toast('Stopping...','info');
+}
+
+function setProgress(pct,text){
+  document.getElementById('prog-wrap').style.display='';
+  document.getElementById('prog-fill').style.width=Math.min(100,pct)+'%';
+  document.getElementById('prog-text').textContent=text;
+}
+
+function setProgressStream(count, filename){
+  document.getElementById('prog-wrap').style.display='';
+  const fill=document.getElementById('prog-fill');
+  fill.style.width='100%';
+  fill.style.opacity=(0.4+0.6*((count%10)/10)).toFixed(2);
+  document.getElementById('prog-text').textContent=
+    `Scanning... ${count} file${count!==1?'s':''} processed — ${filename}`;
+}
+
+// ── Stats ────────────────────────────────────────────────────────────────
+function updateStats(){
+  const d=allResults;
+  const low = d.filter(r=>{const s=r.final_score??0;return s>=20&&s<50;}).length;
+  const susp = d.filter(r=>{const s=r.final_score??0;return s>=50&&s<80;}).length;
+  const high = d.filter(r=>(r.final_score??0)>=80).length;
+  
+  const visibleClean = d.filter(r=>(r.final_score??0)<20).length;
+  const totalClean = hiddenCleanCount + visibleClean;
+  const total = totalClean + low + susp + high;
+  
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-clean').textContent=totalClean;
+  document.getElementById('stat-low').textContent=low;
+  document.getElementById('stat-suspicious').textContent=susp;
+  document.getElementById('stat-high').textContent=high;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────
+function scheduleRender(){
+  if(renderScheduled) return;
+  renderScheduled=true;
+  requestAnimationFrame(()=>{
+    renderScheduled=false;
+    renderResults();
+  });
+}
+
+function sortBy(key){
+  if(sortKey===key) sortAsc=!sortAsc;
+  else{sortKey=key;sortAsc=false;}
+  scheduleRender();
+}
+
+function buildRow(r,i){
+  const fs=r.final_score??0;
+  const cs=r.cpp_score??null;
+  const as_=r.ai_score??null;
+  const fc=scoreColor(fs);
+  const cc=cs!==null?scoreColor(cs):'var(--primary)';
+  const ac=as_!==null?scoreColor(as_):'var(--purple)';
+  const vc=verdictClass(r.verdict);
+  
+  const tr=document.createElement('tr');
+  // Trigger Detailed Modal instead of accordion expand
+  tr.onclick=()=>openFileDetails(r);
+  
+  tr.innerHTML=
+    `<td class="file-cell">
+      <div class="file-name" title="${escH(r.file||'')}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+        ${escH(r.filename||r.file||'—')}
+      </div>
+      <div class="file-path">${escH(r.file||'')}</div>
+    </td>
+    <td>
+      <div class="score-main">
+        <span class="score-num" style="color:${fc}">${fs}</span>
+        <div class="score-bar"><div class="score-fill" style="width:${fs}%;background:${fc}"></div></div>
+      </div>
+    </td>
+    <td>${cs!==null
+      ?`<div class="mini-score">
+          <div class="mini-score-header">
+            <span class="mini-score-label">C++</span>
+            <span class="mini-score-val" style="color:${cc}">${cs}</span>
+          </div>
+          <div class="mini-score-bar"><div class="mini-score-fill" style="width:${cs}%;background:${cc}"></div></div>
+        </div>`
+      :'<span style="color:var(--text-light);font-size:12px">—</span>'}
+    </td>
+    <td>${as_!==null
+      ?`<div class="mini-score">
+          <div class="mini-score-header">
+            <span class="mini-score-label">AI</span>
+            <span class="mini-score-val" style="color:${ac}">${as_}</span>
+          </div>
+          <div class="mini-score-bar"><div class="mini-score-fill" style="width:${as_}%;background:${ac}"></div></div>
+        </div>`
+      :'<span style="color:var(--text-light);font-size:12px">—</span>'}
+    </td>
+    <td><span class="verdict-badge ${vc}">${escH(r.verdict||'Unknown')}</span></td>
+    <td><span class="method-tag">${escH(r.method||'—')}</span></td>`;
+
+  return tr;
+}
+
+function renderResults(){
+  let data=[...allResults];
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  if(q) data=data.filter(r=>
+    (r.filename||'').toLowerCase().includes(q)||
+    (r.verdict||'').toLowerCase().includes(q)||
+    (r.file||'').toLowerCase().includes(q)
+  );
+  data.sort((a,b)=>{
+    let av=a[sortKey]??'', bv=b[sortKey]??'';
+    if(typeof av==='string') av=av.toLowerCase();
+    if(typeof bv==='string') bv=bv.toLowerCase();
+    return sortAsc?(av>bv?1:-1):(av<bv?1:-1);
+  });
+
+  const isEmpty=data.length===0;
+  document.getElementById('results-empty').style.display=isEmpty?'':'none';
+  document.getElementById('result-count').textContent=isEmpty?'':
+    `${data.length} result${data.length!==1?'s':''}`;
+
+  const frag=document.createDocumentFragment();
+  data.forEach((r,i)=>{
+    frag.appendChild(buildRow(r,i));
+  });
+  
+  const tbody=document.getElementById('results-tbody');
+  tbody.innerHTML=''; 
+  tbody.appendChild(frag); 
+}
+
+function clearResults(){
+  allResults=[];
+  hiddenCleanCount = 0;
+  renderResults();
+  updateStats();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+async function exportResults(){
+  if(!allResults.length){toast('No results to export','error');return;}
+  const r=await fetch('http://localhost:5000/api/export',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(allResults)
+  });
+  const blob=await r.blob();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='scan_results.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported '+allResults.length+' results','success');
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+async function loadHistory(){
+  try{
+    const hist=await(await fetch('http://localhost:5000/api/history')).json();
+    const list=document.getElementById('history-list');
+    const empty=document.getElementById('history-empty');
+    const items=[...hist].reverse().slice(0,200);
+    empty.style.display=items.length===0?'':'none';
+
+    const frag=document.createDocumentFragment();
+    items.forEach(e=>{
+      const fs=e.final_score??0;
+      const fc=scoreColor(fs);
+      const vc=verdictClass(e.verdict);
+      const div=document.createElement('div');
+      div.className='history-item';
+      // Clicking history opens details modal
+      div.onclick = () => openFileDetails(e);
+      div.innerHTML=
+        `<span class="h-time">${escH(e.timestamp||'')}</span>
+         <span class="h-file" title="${escH(e.file||'')}">${escH(e.filename||e.file||'—')}</span>
+         <span class="h-final" style="color:${fc}">${fs}</span>
+         <span class="h-cpp">${e.cpp_score??'—'}</span>
+         <span class="h-ai">${e.ai_score??'—'}</span>
+         <span class="verdict-badge ${vc}">${escH(e.verdict||'?')}</span>`;
+      frag.appendChild(div);
+    });
+    list.querySelectorAll('.history-item').forEach(el=>el.remove());
+    list.appendChild(frag);
+  }catch{}
+}
+
+async function clearHistory(){
+  await fetch('http://localhost:5000/api/history/clear',{method:'POST'});
+  loadHistory();
+  toast('History cleared','info');
+}
+
+// ── ETW Real-time Timeline (NEW) ──────────────────────────────────────────
+function updateTimelineChart(timelineEvents) {
+  const container = document.getElementById('timeline-chart');
+  
+  if (!timelineEvents || timelineEvents.length === 0) {
+    if (!document.getElementById('timeline-empty')) {
+      container.innerHTML = `
+        <div class="empty-state" style="width:100%; padding:0; align-self:center;" id="timeline-empty">
+          <div class="empty-text" style="font-size:12px;">Awaiting ETW events...</div>
+        </div>`;
+    }
+    return;
+  }
+  
+  // Clear empty state if it exists
+  const emptyState = document.getElementById('timeline-empty');
+  if (emptyState) emptyState.remove();
+
+  // Create a document fragment to efficiently append new bars
+  const frag = document.createDocumentFragment();
+  
+  // Keep the chart to a max of 200 bars to prevent lag
+  const sliceSize = Math.min(timelineEvents.length, 200);
+  const eventsToRender = timelineEvents.slice(-sliceSize);
+
+  // Clear current bars to re-render (you could optimize this by appending only new ones later)
+  container.innerHTML = '';
+  
+  eventsToRender.forEach(e => {
+    const v = e.verdict ? e.verdict.toUpperCase() : 'CLEAN';
+    const barClass = v === 'MALICIOUS' ? 'tb-malicious' : (v === 'SUSPICIOUS' ? 'tb-suspicious' : 'tb-clean');
+    
+    const bar = document.createElement('div');
+    bar.className = 'timeline-bar ' + barClass;
+    bar.title = `${e.timestamp || ''} - ${e.file || 'Unknown'} [${v}]`;
+    
+    frag.appendChild(bar);
+  });
+  
+  container.appendChild(frag);
+  
+  // Auto-scroll to the newest events on the right
+  container.scrollLeft = container.scrollWidth;
+}
+
+async function updateETWTimeline() {
+  try {
+    const response = await fetch('http://localhost:5000/api/dashboard/timeline');
+    if (!response.ok) return;
+    const data = await response.json();
+    
+    // Update chart with new events
+    updateTimelineChart(data.timeline);
+    
+    // Update verdict counters safely
+    if (data.summary && data.summary.by_verdict) {
+      document.getElementById('clean-count').textContent = data.summary.by_verdict.CLEAN || 0;
+      document.getElementById('suspicious-count').textContent = data.summary.by_verdict.SUSPICIOUS || 0;
+      document.getElementById('malicious-count').textContent = data.summary.by_verdict.MALICIOUS || 0;
+    }
+  } catch (e) {
+    console.warn("ETW Timeline update failed:", e);
+  }
+}
+
+// Start ETW Polling
+setInterval(updateETWTimeline, 2000);
+updateETWTimeline(); // initial fire
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast '+type+' show';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ── Escape HTML ───────────────────────────────────────────────────────────
+function escH(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderResults();
+loadHistory();
+</script>
+</body>
+</html>

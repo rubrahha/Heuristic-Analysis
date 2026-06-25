@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeuristicScanner AI · Enterprise</title>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --accent:  #6366f1;
+    --clean:   #22c55e;
+    --low:     #eab308;
+    --suspicious: #f97316;
+    --high:    #ef4444;
+    --radius:  8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo h1 { font-size: 15px; font-weight: 700; color: var(--accent); }
+  .sidebar-logo p  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-item { padding: 10px 20px; cursor: pointer; color: var(--muted); transition: all .15s; border-left: 3px solid transparent; font-size: 13px; }
+  .nav-item:hover { color: var(--text); background: rgba(99,102,241,.08); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(99,102,241,.1); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
+  .topbar h2 { font-size: 16px; font-weight: 600; }
+  .status-badges { display: flex; gap: 8px; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid; }
+  .badge-ok  { color: var(--clean);   border-color: var(--clean);  background: rgba(34,197,94,.08); }
+  .badge-warn{ color: var(--low);     border-color: var(--low);    background: rgba(234,179,8,.08); }
+  .badge-err { color: var(--high);    border-color: var(--high);   background: rgba(239,68,68,.08); }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Panels */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .panel-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 14px; color: var(--text); font-size: 13px; outline: none; }
+  .input-row input:focus { border-color: var(--accent); }
+  .btn { padding: 9px 18px; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger  { background: var(--high);   color: #fff; }
+  .btn-ghost   { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Progress */
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width .3s; }
+  .progress-text { font-size: 11px; color: var(--muted); margin-top: 6px; display: none; }
+
+  /* Two‑column layout for detailed view */
+  .two-col { display: grid; grid-template-columns: 1fr 400px; gap: 20px; margin-bottom: 20px; }
+  .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .detail-header { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .detail-title { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+  .detail-filename { font-size: 18px; font-weight: 700; word-break: break-all; margin-bottom: 6px; }
+  .detail-path { font-size: 11px; color: var(--muted); word-break: break-all; }
+  .detail-content { padding: 16px 18px; max-height: 600px; overflow-y: auto; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text); margin: 16px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .section-title:first-of-type { margin-top: 0; }
+  .info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 6px 12px; font-size: 13px; }
+  .info-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .hash-value { font-family: monospace; font-size: 11px; background: var(--bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .copy-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 6px; }
+  .copy-btn:hover { color: var(--accent); }
+  .section-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+  .section-table th { text-align: left; padding: 4px 6px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  .section-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,.03); }
+  .import-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .import-chip { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; font-family: monospace; font-size: 11px; }
+  .indicator-group { margin-bottom: 12px; }
+  .indicator-source { font-size: 11px; font-weight: 700; margin-bottom: 4px; color: var(--accent); }
+  .indicator-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; margin: 0 6px 6px 0; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+  .chip-src { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+  .src-cpp { background: rgba(99,102,241,.15); color: var(--accent); }
+  .src-ai  { background: rgba(34,197,94,.1);   color: var(--clean); }
+  .score-gauge { margin: 8px 0; }
+  .gauge-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .gauge-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 3px; }
+
+  /* Results table */
+  .table-wrap { overflow-x: auto; }
+  .results-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .results-table th { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  .results-table th:hover { color: var(--text); }
+  .results-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+  .results-table tr:hover td { background: rgba(255,255,255,.02); }
+  .results-table tr.selected td { background: rgba(99,102,241,.08); border-left: 3px solid var(--accent); }
+
+  /* Verdict badges */
+  .v-clean      { color: var(--clean); }
+  .v-low_risk   { color: var(--low); }
+  .v-suspicious { color: var(--suspicious); }
+  .v-high_risk  { color: var(--high); }
+  .v-error      { color: var(--muted); }
+
+  /* Score bar */
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar  { width: 60px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; }
+
+  /* Expanded indicators (folded for table) */
+  .indicators-row td { padding: 0 12px 12px 12px; display: none; }
+  .indicators-row.open td { display: table-cell; }
+  .indicator-list { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
+  .indicator-item { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
+  .indicator-src  { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+
+  /* Search */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+  .search-input { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 12px; color: var(--text); font-size: 13px; outline: none; width: 240px; }
+  .search-input:focus { border-color: var(--accent); }
+  .result-count { color: var(--muted); font-size: 12px; margin-left: auto; }
+
+  /* History */
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; align-items: center; gap: 14px; }
+  .history-item .time { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+  .history-item .fname { font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-item .score-num { font-weight: 700; font-size: 15px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; font-size: 13px; z-index: 999; transform: translateY(80px); transition: transform .25s; max-width: 320px; }
+  .toast.show { transform: translateY(0); }
+  .toast.success { border-left: 3px solid var(--clean); }
+  .toast.error   { border-left: 3px solid var(--high); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🛡 HeuristicScanner</h1>
+    <p>AI Malware Detection v2.0</p>
+  </div>
+  <div class="nav-item active" onclick="showTab('scan')" id="nav-scan">⚡ Scan</div>
+  <div class="nav-item" onclick="showTab('results')" id="nav-results">📋 Results</div>
+  <div class="nav-item" onclick="showTab('history')" id="nav-history">🕑 History</div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="tab-title">Scanner</h2>
+    <div class="status-badges">
+      <span class="badge" id="badge-scanner">...</span>
+      <span class="badge" id="badge-model">...</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- SCAN TAB with Two‑Column Layout for Detailed View -->
+    <div id="tab-scan">
+      <div class="two-col">
+        <!-- Left: Scan Inputs -->
+        <div>
+          <div class="panel">
+            <div class="panel-title">Scan Single File (Detailed Report)</div>
+            <div class="input-row">
+              <input id="file-path" type="text" placeholder="C:\path\to\file.exe">
+              <button class="btn btn-primary" id="btn-file" onclick="scanFile()">Analyze File</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Scan Folder (Bulk)</div>
+            <div class="input-row">
+              <input id="folder-path" type="text" placeholder="C:\path\to\folder">
+              <button class="btn btn-primary" id="btn-folder" onclick="scanFolder()">Scan Folder</button>
+              <button class="btn btn-danger" id="btn-stop" onclick="stopScan()" style="display:none">Stop</button>
+            </div>
+            <div class="progress-bar" id="prog-bar"><div class="progress-fill" id="prog-fill"></div></div>
+            <div class="progress-text" id="prog-text"></div>
+          </div>
+        </div>
+
+        <!-- Right: Detailed Report Panel (VirusTotal‑style) -->
+        <div class="detail-panel" id="detail-panel">
+          <div class="detail-header">
+            <div class="detail-title">DETAILED ANALYSIS</div>
+            <div class="detail-filename" id="detail-filename">—</div>
+            <div class="detail-path" id="detail-path">Select a file or run a single‑file scan</div>
+          </div>
+          <div class="detail-content" id="detail-content">
+            <div class="empty-state" style="padding:40px 20px">
+              <div class="icon">🔍</div>
+              <div>Click a file or run a single‑file scan</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS TAB -->
+    <div id="tab-results" style="display:none">
+      <div class="panel">
+        <div class="toolbar">
+          <input class="search-input" id="search" type="text" placeholder="Filter by filename or verdict..." oninput="filterResults()">
+          <button class="btn btn-ghost" onclick="exportResults()">⬇ Export JSON</button>
+          <button class="btn btn-ghost" onclick="clearResults()">✕ Clear</button>
+          <span class="result-count" id="result-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th onclick="sortBy('filename')">File ↕</th>
+                <th onclick="sortBy('final_score')">Score ↕</th>
+                <th onclick="sortBy('verdict')">Verdict ↕</th>
+                <th>Method</th>
+                <th>C++ / AI</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="results-empty" style="display:none">
+            <div class="icon">📭</div>
+            <div>No results yet. Run a scan first.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="tab-history" style="display:none">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div class="panel-title" style="margin:0">Recent Scans</div>
+          <button class="btn btn-ghost" onclick="clearHistory()">Clear History</button>
+        </div>
+        <div class="history-list" id="history-list"></div>
+        <div class="empty-state" id="history-empty" style="display:none">
+          <div class="icon">🕑</div>
+          <div>No scan history yet.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let allResults   = [];
+let sortKey      = "final_score";
+let sortAsc      = false;
+let currentTab   = "scan";
+let selectedFile = null;           // currently displayed in detail panel
+
+// ── Tab switching ──────────────────────────────────────────────────────
+function showTab(name) {
+  currentTab = name;
+  ["scan","results","history"].forEach(t => {
+    document.getElementById("tab-" + t).style.display = t === name ? "" : "none";
+    document.getElementById("nav-" + t).classList.toggle("active", t === name);
+  });
+  const titles = {scan:"Scanner", results:"Results", history:"Scan History"};
+  document.getElementById("tab-title").textContent = titles[name];
+  if (name === "history") loadHistory();
+}
+
+// ── Status badges ──────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const r = await fetch("/api/status");
+    const d = await r.json();
+    const sb = document.getElementById("badge-scanner");
+    const mb = document.getElementById("badge-model");
+    sb.textContent = d.scanner_built ? "C++ ✓" : "C++ ✗";
+    sb.className   = "badge " + (d.scanner_built ? "badge-ok" : "badge-err");
+    mb.textContent = d.model_trained ? "AI ✓" : "AI ✗";
+    mb.className   = "badge " + (d.model_trained ? "badge-ok" : "badge-warn");
+  } catch {}
+}
+loadStatus();
+setInterval(loadStatus, 10000);
+
+// ── Scan file (with detailed report) ───────────────────────────────────
+async function scanFile() {
+  const path = document.getElementById("file-path").value.trim();
+  if (!path) { toast("Enter a file path", "error"); return; }
+  setScanning(true);
+  try {
+    const r = await fetch("/api/scan/file", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({path})
+    });
+    if (r.status === 409) { toast("Scan already in progress", "error"); return; }
+    const d = await r.json();
+    if (d.error) { toast(d.error, "error"); return; }
+    // Update results list
+    allResults = allResults.filter(x => x.file !== d.file);
+    allResults.unshift(d);
+    renderResults();
+    // Auto‑select and display detailed report
+    selectFile(d);
+    toast("Scan complete: " + d.verdict, d.verdict==="CLEAN" ? "success" : "error");
+    showTab("scan"); // stay on scan tab to see details
+  } catch(e) { toast("Error: " + e.message, "error"); }
+  finally { setScanning(false); }
+}
+
+document.getElementById('file-path').addEventListener('keydown', e => {
+  if (e.key === 'Enter') scanFile();
+});
+
+// ── Detailed Report Rendering (VirusTotal‑style) ────────────────────────
+function selectFile(result) {
+  selectedFile = result;
+  renderDetailPanel(result);
+  // Highlight row in results table (if visible)
+  document.querySelectorAll('#results-tbody tr').forEach(tr => tr.classList.remove('selected'));
+  const row = [...document.querySelectorAll('#results-tbody tr')].find(tr => tr.dataset.file === result.file);
+  if (row) row.classList.add('selected');
+}
+
+function renderDetailPanel(data) {
+  const panel = document.getElementById('detail-content');
+  const titleEl = document.getElementById('detail-filename');
+  const pathEl = document.getElementById('detail-path');
+  if (!data) {
+    titleEl.textContent = '—';
+    pathEl.textContent = 'Select a file or run a single‑file scan';
+    panel.innerHTML = `<div class="empty-state" style="padding:40px 20px"><div class="icon">🔍</div><div>Click a file or run a single‑file scan</div></div>`;
+    return;
+  }
+  titleEl.textContent = data.filename || data.file;
+  pathEl.textContent = data.file || '';
+
+  const fs = data.final_score ?? 0, cs = data.cpp_score, as_ = data.ai_score;
+  const fc = scoreColor(fs);
+  const indicators = data.indicators || [];
+  const cppInds = indicators.filter(i => i.source === 'C++');
+  const aiInds = indicators.filter(i => i.source === 'AI');
+
+  const meta = data.metadata || {};
+  const hashes = meta.hashes || {};
+  const pe = meta.pe || {};
+  const signature = meta.signature || {};
+
+  let html = `
+    <div class="section-title">SCORE BREAKDOWN</div>
+    <div class="score-gauge"><div class="gauge-label"><span>Final Score</span><span style="color:${fc}">${fs}</span></div><div class="gauge-bar"><div class="gauge-fill" style="width:${fs}%;background:${fc}"></div></div></div>
+    ${cs!==null?`<div class="score-gauge"><div class="gauge-label"><span>C++ Heuristic</span><span style="color:${scoreColor(cs)}">${cs}</span></div><div class="gauge-bar"><div class="gauge-fill" style="width:${cs}%;background:${scoreColor(cs)}"></div></div></div>`:''}
+    ${as_!==null?`<div class="score-gauge"><div class="gauge-label"><span>AI Probability</span><span style="color:${scoreColor(as_)}">${as_}</span></div><div class="gauge-bar"><div class="gauge-fill" style="width:${as_}%;background:${scoreColor(as_)}"></div></div></div>`:''}
+    <div class="info-grid">
+      <span class="info-label">Verdict</span><span class="info-value"><span class="badge ${fs>=80?'badge-err':fs>=50?'badge-warn':fs>=20?'badge-warn':'badge-ok'}">${data.verdict||'?'}</span></span>
+      <span class="info-label">Method</span><span class="info-value">${data.method||'—'}</span>
+      <span class="info-label">File Size</span><span class="info-value">${formatBytes(data.file_size||0)}</span>
+      <span class="info-label">Type</span><span class="info-value">${meta.file_type||'PE32 executable'}</span>
+    </div>
+
+    <div class="section-title">CRYPTOGRAPHIC HASHES</div>
+    <div class="info-grid">
+      <span class="info-label">MD5</span><div class="hash-value">${hashes.md5||'—'} ${hashes.md5?`<button class="copy-btn" onclick="copyText('${hashes.md5}')">📋</button>`:''}</div>
+      <span class="info-label">SHA‑1</span><div class="hash-value">${hashes.sha1||'—'} ${hashes.sha1?`<button class="copy-btn" onclick="copyText('${hashes.sha1}')">📋</button>`:''}</div>
+      <span class="info-label">SHA‑256</span><div class="hash-value">${hashes.sha256||'—'} ${hashes.sha256?`<button class="copy-btn" onclick="copyText('${hashes.sha256}')">📋</button>`:''}</div>
+    </div>
+
+    <div class="section-title">DIGITAL SIGNATURE</div>
+    <div class="info-grid">
+      <span class="info-label">Signed</span><span class="info-value">${signature.signed?'✅ Yes':'❌ No'}</span>
+      ${signature.signed?`<span class="info-label">Publisher</span><span class="info-value">${escapeHtml(signature.publisher||'Unknown')}</span>`:''}
+      ${signature.thumbprint?`<span class="info-label">Thumbprint</span><span class="info-value hash-value">${signature.thumbprint}</span>`:''}
+    </div>
+
+    <div class="section-title">PE STRUCTURE</div>
+    <table class="section-table">
+      <tr><th>Section</th><th>Entropy</th><th>Virtual Size</th><th>Raw Size</th></tr>
+      ${(pe.sections||[]).map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.entropy?.toFixed(2)||'—'}</td><td>${formatBytes(s.virtual_size||0)}</td><td>${formatBytes(s.raw_size||0)}</td></tr>`).join('')}
+    </table>
+    <div class="info-grid" style="margin-top:8px">
+      <span class="info-label">Entry Point</span><span class="info-value">0x${(pe.entry_point||0).toString(16).toUpperCase()}</span>
+      <span class="info-label">Section Count</span><span class="info-value">${pe.section_count||0}</span>
+    </div>
+
+    <div class="section-title">SUSPICIOUS IMPORTS</div>
+    <div class="import-list">
+      ${(pe.imports||[]).length?pe.imports.map(imp=>`<span class="import-chip">${escapeHtml(imp)}</span>`).join(''):'<span style="color:var(--muted)">No suspicious imports detected</span>'}
+    </div>
+
+    <div class="section-title">INDICATORS (${indicators.length})</div>
+    ${cppInds.length?`<div class="indicator-group"><div class="indicator-source">C++ HEURISTIC ENGINE</div>${cppInds.map(ind=>`<div class="indicator-chip"><span class="chip-src src-cpp">C++</span><span>${escapeHtml(ind.text)}</span></div>`).join('')}</div>`:''}
+    ${aiInds.length?`<div class="indicator-group"><div class="indicator-source">AI MODEL</div>${aiInds.map(ind=>`<div class="indicator-chip"><span class="chip-src src-ai">AI</span><span>${escapeHtml(ind.text)}</span></div>`).join('')}</div>`:''}
+    ${indicators.length===0?'<span style="color:var(--muted)">No indicators reported</span>':''}
+  `;
+  panel.innerHTML = html;
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024, sizes = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function copyText(txt) { navigator.clipboard?.writeText(txt); toast('Copied to clipboard', 'success'); }
+
+// ── Folder scan (bulk, no detail) ──────────────────────────────────────
+let folderBatch = [];
+function scanFolder() {
+  const path = document.getElementById("folder-path").value.trim();
+  if (!path) { toast("Enter a folder path", "error"); return; }
+  setScanning(true);
+  folderBatch = [];
+  document.getElementById("btn-stop").style.display = "";
+  startFolderStream(path);
+}
+
+async function startFolderStream(path) {
+  setProgress(0, "Starting...");
+  try {
+    const r = await fetch("/api/scan/folder", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({path})
+    });
+    const reader = r.body.getReader();
+    const dec    = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          const d = JSON.parse(line.slice(5));
+          if (d.done) { setProgress(100, "Done — " + folderBatch.length + " files scanned"); break; }
+          if (d.error) { toast(d.error, "error"); break; }
+          folderBatch.unshift(d);
+          allResults.unshift(d);
+          if (d.progress) setProgress(d.progress.percent,
+            `Scanning ${d.progress.current}/${d.progress.total} — ${d.filename}`);
+        } catch {}
+      }
+    }
+  } catch(e) { toast("Stream error: " + e.message, "error"); }
+  finally {
+    setScanning(false);
+    document.getElementById("btn-stop").style.display = "none";
+    renderResults();
+    if (folderBatch.length) {
+      showTab("results");
+      toast("Folder scan complete — " + folderBatch.length + " files", "success");
+    }
+  }
+}
+
+function stopScan() {
+  fetch("/api/scan/stop", {method:"POST"});
+  toast("Stopping scan...");
+}
+
+// ── Progress helpers ───────────────────────────────────────────────────
+function setProgress(pct, text) {
+  document.getElementById("prog-bar").style.display = "";
+  document.getElementById("prog-text").style.display = "";
+  document.getElementById("prog-fill").style.width = pct + "%";
+  document.getElementById("prog-text").textContent = text;
+}
+function setScanning(on) {
+  ["btn-file","btn-folder"].forEach(id => document.getElementById(id).disabled = on);
+}
+
+// ── Results table (with click to show detail) ──────────────────────────
+function scoreColor(s) {
+  if (s >= 80) return "var(--high)";
+  if (s >= 50) return "var(--suspicious)";
+  if (s >= 20) return "var(--low)";
+  return "var(--clean)";
+}
+
+function renderResults() {
+  let data = [...allResults];
+  const q = document.getElementById("search")?.value.toLowerCase() || "";
+  if (q) data = data.filter(r =>
+    (r.filename||"").toLowerCase().includes(q) ||
+    (r.verdict||"").toLowerCase().includes(q));
+
+  data.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (typeof av === "string") av = av.toLowerCase();
+    if (typeof bv === "string") bv = bv.toLowerCase();
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  document.getElementById("result-count").textContent =
+    data.length + " result" + (data.length !== 1 ? "s" : "");
+  document.getElementById("results-empty").style.display = data.length === 0 ? "" : "none";
+
+  const tbody = document.getElementById("results-tbody");
+  tbody.innerHTML = "";
+
+  data.forEach((r, i) => {
+    const s = r.final_score ?? 0;
+    const vc = "v-" + (r.verdict_class || "clean");
+    const sc = scoreColor(s);
+
+    const tr = document.createElement("tr");
+    tr.dataset.file = r.file;
+    tr.onclick = () => { selectFile(r); showTab('scan'); };
+    tr.innerHTML = `
+      <td title="${escapeHtml(r.file)}">${escapeHtml(r.filename || r.file)}</td>
+      <td>
+        <div class="score-wrap">
+          <span style="font-weight:700;color:${sc};width:28px">${s}</span>
+          <div class="score-bar"><div class="score-fill" style="width:${s}%;background:${sc}"></div></div>
+        </div>
+      </td>
+      <td class="${vc}" style="font-weight:600">${escapeHtml(r.verdict)}</td>
+      <td style="color:var(--muted);font-size:11px">${escapeHtml(r.method||"")}</td>
+      <td style="color:var(--muted);font-size:12px">${r.cpp_score??"-"} / ${r.ai_score??"-"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterResults() { renderResults(); }
+function sortBy(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = false; }
+  renderResults();
+}
+function clearResults() {
+  allResults = [];
+  selectedFile = null;
+  renderResults();
+  renderDetailPanel(null);
+}
+
+// ── Export & History (unchanged) ───────────────────────────────────────
+async function exportResults() {
+  if (!allResults.length) { toast("No results to export", "error"); return; }
+  const r = await fetch("/api/export", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(allResults)
+  });
+  const blob = await r.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = "scan_results.json"; a.click();
+  URL.revokeObjectURL(url);
+  toast("Exported " + allResults.length + " results", "success");
+}
+
+async function loadHistory() {
+  try {
+    const r = await fetch("/api/history");
+    const h = await r.json();
+    const list  = document.getElementById("history-list");
+    const empty = document.getElementById("history-empty");
+    const rev   = [...h].reverse().slice(0, 200);
+    empty.style.display = rev.length === 0 ? "" : "none";
+    list.innerHTML = rev.map(e => {
+      const s  = e.final_score ?? 0;
+      const sc = scoreColor(s);
+      return `<div class="history-item" onclick="selectFile(${JSON.stringify(e).replace(/"/g,'&quot;')}); showTab('scan');">
+        <span class="time">${e.timestamp}</span>
+        <span class="fname" title="${escapeHtml(e.file)}">${escapeHtml(e.filename || e.file)}</span>
+        <span class="score-num" style="color:${sc}">${s}</span>
+        <span class="badge ${s>=80?'badge-err':s>=50?'badge-warn':s>=20?'badge-warn':'badge-ok'}">${escapeHtml(e.verdict)}</span>
+      </div>`;
+    }).join("");
+  } catch {}
+}
+
+async function clearHistory() {
+  await fetch("/api/history/clear", {method:"POST"});
+  loadHistory();
+  toast("History cleared", "success");
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type="") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className   = "toast " + type + " show";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3500);
+}
+
+// Init
+renderResults();
+loadHistory();
+</script>
+</body>
+</html>

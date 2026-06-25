@@ -1,0 +1,72 @@
+{
+  "_comment": "bridge_config.json — tunes bridge.py v3 without touching source code. All keys are optional; missing keys fall back to built-in defaults.",
+
+  "_section_scoring": "─── Core scoring weights ───────────────────────────────",
+  "cpp_weight": 0.45,
+  "ai_weight": 0.55,
+  "detection_threshold": 0.5,
+
+  "_section_veto": "─── AI override / veto thresholds ──────────────────────",
+  "ai_override_threshold": 20,
+  "_note_renamed": "RENAMED from 'ai_override_below' in v2 — update your config!",
+  "ai_veto_threshold": 60,
+  "ai_veto_hard_cap": 15,
+  "ai_below_threshold_weight": 0.70,
+
+  "_section_floors": "─── False-negative hard floors ─────────────────────────",
+  "trusted_path_score_cap": 30,
+  "trusted_publisher_score_cap": 15,
+  "hard_floor_entropy": 7.5,
+  "hard_floor_score": 45,
+  "high_risk_feature_floor": 60,
+  "min_score_unsigned_network": 25,
+  "bypass_trust_min_indicators": 3,
+  "ai_veto_max_indicators": 2,
+
+  "_section_concurrency": "─── Concurrency (0 = auto-detect from CPU count) ───",
+  "max_concurrent_scans": 0,
+  "_note_concurrent": "0 = auto (4 × cpu_count). Your old value was 16 — leave at 0 unless you need a hard cap.",
+  "ai_workers": 0,
+  "_note_ai_workers": "0 = auto (cpu_count). Your old value was 4 — auto will use all cores.",
+  "feature_workers": 0,
+  "_note_feature_workers": "NEW v3 — ProcessPool workers for CPU-bound feature extraction. 0 = auto (cpu_count ÷ 2, min 2).",
+  "cpp_timeout_seconds": 30,
+  "ai_timeout_seconds": 20,
+  "dir_cpp_timeout": 300,
+
+  "_section_batch": "─── Batch AI inference (NEW v3) ────────────────────────",
+  "batch_size": 64,
+  "_note_batch_size": "Max feature vectors per predict_proba() call. Raise to 128 on high-RAM servers.",
+  "batch_flush_ms": 50,
+  "_note_batch_flush": "Max milliseconds before a partial batch is force-flushed. Lower = less latency, slightly less throughput.",
+
+  "_section_cache": "─── Local result cache ──────────────────────────────────",
+  "result_cache_size": 4096,
+  "result_cache_ttl_seconds": 300,
+  "hash_cache_size": 8192,
+
+  "_section_redis": "─── Redis distributed cache (NEW v3, optional) ─────────",
+  "redis_url": "",
+  "_note_redis": "Leave empty to use local LRU only. Set to 'redis://host:6379/0' for multi-node / global deployments.",
+  "redis_ttl_seconds": 3600,
+  "redis_key_prefix": "bridge:scan:",
+
+  "_section_circuit": "─── C++ scanner circuit breaker ────────────────────────",
+  "cpp_cb_fail_threshold": 5,
+  "cpp_cb_reset_seconds": 60,
+
+  "_section_priority": "─── Priority scan queue (NEW v3) ────────────────────",
+  "high_priority_path_patterns": [
+    "\\\\temp\\\\",
+    "\\\\tmp\\\\",
+    "\\\\appdata\\\\",
+    "\\\\downloads\\\\",
+    "\\\\programdata\\\\",
+    "\\\\users\\\\public\\\\"
+  ],
+  "_note_priority": "Files in these paths are yielded first in folder scans so analysts see high-risk results sooner.",
+
+  "_section_ensemble": "─── Model ensemble (NEW v3, optional) ──────────────",
+  "ensemble_members": [],
+  "_note_ensemble": "Add extra models for blended scoring. Example: [{\"path\": \"models/modelB.pkl\", \"weight\": 0.4}]"
+}

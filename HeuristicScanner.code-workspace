@@ -1,0 +1,14 @@
+{
+  "folders": [
+    { "name": "🐍 AI (Python — VS Code)", "path": "ai" },
+    { "name": "⚙ Scanner (C++ — Visual Studio)", "path": "scanner" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:🐍 AI (Python — VS Code)}/venv/Scripts/python.exe",
+    "editor.formatOnSave": true,
+    "files.exclude": { "**/__pycache__": true, "**/*.pyc": true, "**/venv": true }
+  },
+  "extensions": {
+    "recommendations": ["ms-python.python", "ms-vscode.cpptools", "ms-vscode.cmake-tools"]
+  }
+}
